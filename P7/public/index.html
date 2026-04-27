@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="/manifest.json">
+    <title>Mesero PWA - ESCOM</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #f0f2f5; padding: 20px; }
+        .container { max-width: 400px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        h1 { color: #800000; font-size: 1.5rem; }
+        .menu-grid { display: grid; gap: 10px; margin-bottom: 20px; }
+        button { background: #800000; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        button:active { transform: scale(0.95); }
+        .pedido-card { border-left: 5px solid #800000; background: #fff5f5; padding: 10px; margin-top: 10px; border-radius: 5px; text-align: left; font-size: 0.9rem; }
+        .status-tag { font-weight: bold; float: right; text-transform: uppercase; color: #d9534f; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍳 Cocina Distribuida</h1>
+        <div class="menu-grid">
+            <button onclick="enviarPedido('🍕 Pizza Especial')">🍕 Pizza Especial</button>
+            <button onclick="enviarPedido('🍔 Hamburguesa Triple')">🍔 Hamburguesa Triple</button>
+            <button onclick="enviarPedido('🌮 Tacos al Pastor')">🌮 Tacos al Pastor</button>
+        </div>
+        <div id="lista-pedidos">
+            </div>
+    </div>
+
+    <script>
+        async function enviarPedido(platillo) {
+            const res = await fetch('/pedido', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({platillo: platillo, mesero: "David"})
+            });
+            const data = await res.json();
+            crearTarjetaPedido(data.id_pedido, platillo);
+        }
+
+        function crearTarjetaPedido(id, platillo) {
+            const lista = document.getElementById('lista-pedidos');
+            const div = document.createElement('div');
+            div.id = `card-${id}`;
+            div.className = 'pedido-card';
+            div.innerHTML = `
+                <span id="status-${id}" class="status-tag">En espera</span>
+                <strong>${platillo}</strong><br>
+                <small>ID: ${id}</small>
+            `;
+            lista.prepend(div); // Pone el más nuevo arriba
+            actualizarEstatus(id);
+        }
+
+        async function actualizarEstatus(id) {
+            const res = await fetch('/estatus/' + id);
+            const data = await res.json();
+            const statusElement = document.getElementById('status-' + id);
+            
+            statusElement.innerText = data.estatus;
+            
+            // Cambiar color según estatus
+            if(data.estatus === "Cocinando") statusElement.style.color = "#f0ad4e";
+            if(data.estatus === "Listo") {
+                statusElement.style.color = "#5cb85c";
+                return; // Dejar de consultar
+            }
+            
+            setTimeout(() => actualizarEstatus(id), 3000);
+        }
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js');
+        }
+    </script>
+</body>
+</html>
